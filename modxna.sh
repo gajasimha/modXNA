@@ -661,12 +661,13 @@ libfile="${RESNAME}.lib"
 HEAD_ID="none"
 TAIL_ID="none"
 
-if [[ -f "$libfile" ]]; then
-    mapfile -t connect_lines < <(awk "/!entry.${RESNAME}.unit.connect array int/{getline; head=\$1; getline; tail=\$1; print head; print tail}" "$libfile")
-    HEAD_ID="${connect_lines[0]}"
-    TAIL_ID="${connect_lines[1]}"
-fi
+if [ -f "$libfile" ]; then
+    HEAD_ID=$(awk "/!entry\\.${RESNAME}\\.unit\\.connect array int/ {getline; print \$1; exit}" "$libfile")
+    TAIL_ID=$(awk "/!entry\\.${RESNAME}\\.unit\\.connect array int/ {getline; getline; print \$1; exit}" "$libfile")
 
+    [ -z "$HEAD_ID" ] && HEAD_ID="none"
+    [ -z "$TAIL_ID" ] && TAIL_ID="none"
+fi
 echo
 echo "====== modXNA Summary ======"
 echo "Input file:     $INPUT"
