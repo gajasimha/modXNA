@@ -459,7 +459,7 @@ EOF
         Q_HO2P=`tail -n 1 tmp.sugar.ho2p.dat | awk '{print $7;}'`
         echo "3CAP: O2'($Q_O2P)/HO2'($Q_HO2P) is present."
       fi
-      cpptraj >> tmp.cpptraj.out <<EOF
+      cpptraj > tmp.cpptraj.out 2>&1 <<EOF
 parm tmp.sugar-striped.mol2
 trajin tmp.sugar-striped.mol2
 change atomname from $H_ATOM_NAME to HO3'
@@ -521,6 +521,7 @@ EOF
     if [ -f 'tmp.Nucleotide.mol2' ] ; then
       rm tmp.Nucleotide.mol2
     fi
+
     cat > tmp.combine.cpptraj<<EOF
 parm tmp.BackboneSugar.mol2
 loadcrd tmp.BackboneSugar.mol2 name BackboneSugar parm tmp.BackboneSugar.mol2
@@ -529,12 +530,10 @@ loadcrd tmp.base-striped.mol2 name Base parm tmp.base-striped.mol2
 dataset connect BackboneSugar headmask $ANCHOR03SUGAR
 dataset connect Base tailmask $HEAD01BASE
 sequence Base BackboneSugar name Nucleotide
-change crdset Nucleotide mergeres firstres 1 lastres 2
 change crdset Nucleotide resname from * to $RESNAME
-change crdset Nucleotide oresnums of :1 min 1 max 1
 EOF
+
     if [ $IS_3CAP -eq 1 ] ; then
-      # Modify O3' and HO3' charges for 3-cap
       cat >> tmp.combine.cpptraj <<EOF
 # Charge on all atoms but O3' and HO3'
 set Q1 = crdset Nucleotide charge inmask !@O3',HO3'
@@ -545,9 +544,9 @@ Q3 = $CHARGE_3CAP - \$Q2
 change crdset Nucleotide charge of @HO3' to \$Q3
 change crdset Nucleotide charge of @O3' to $CHARGE_O3p
 EOF
-      if [ ! -z "$Q_O2P" -a ! -z "$Q_HO2P" ] ; then
-        # Equivalence the charges on O3'/HO3' and O2'/HO2'
-        cat >> tmp.combine.cpptraj <<EOF
+
+        if [ ! -z "$Q_O2P" -a ! -z "$Q_HO2P" ] ; then
+          cat >> tmp.combine.cpptraj <<EOF
 # Average O2'/O3' charge
 QO23 = ($Q_O2P + $CHARGE_O3p) / 2.0
 # Average HO2'/HO3' charge
@@ -558,11 +557,13 @@ change crdset Nucleotide charge of @O3' to \$QO23
 change crdset Nucleotide charge of @HO2' to \$QH23
 change crdset Nucleotide charge of @HO3' to \$QH23
 EOF
-      fi
+        fi
     fi
+
     cat >> tmp.combine.cpptraj <<EOF
 crdout Nucleotide tmp.Nucleotide.mol2
 EOF
+
     cpptraj -i tmp.combine.cpptraj
     if [ $? -ne 0 ] ; then
       echo "Error: Creation of nucleotide failed."
